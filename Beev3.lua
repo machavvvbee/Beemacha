@@ -1,71 +1,94 @@
-if G.executed then for _, info in pairs(_G.trackedESP or {}) do if info.text then info.text:Remove() end if info.box then info.box:Remove() end end end
+local beeTD = {
+    Name = "Part",
+    Color = Color3.fromRGB(180, 180, 180),
+    Tab = "BEE",
+    Text = "Show Bee",
+    StateKey = "BeeEnabled",
+    ModeKey = "BeeMode",
+    FillTrans = 0.05
+}
 
-_G.executed = true
+local ESP_FOLDER = Instance.new("Folder")
+ESP_FOLDER.Name = "BeeESP"
+ESP_FOLDER.Parent = workspace
 
-local config = { box = true, name = true, color = Color3.fromRGB(180, 180, 180) }
+local objectESPCache = {}
 
-local trackedESP = _G.trackedESP or {} _G.trackedESP = trackedESP
+local function applyBeeESP(part)
+    if not State.BeeEnabled then return end
+    if objectESPCache[part] then return end
 
-local workspace = game:GetService("Workspace")
+    local mode = State.BeeMode
+    if mode == "Box" then
+        local outline = Instance.new("BoxHandleAdornment", ESP_FOLDER)
+        outline.Adornee = part
+        outline.AlwaysOnTop = true
+        outline.Size = part.Size + Vector3.new(0.5, 0.5, 0.5)
+        outline.Transparency = 0
+        outline.Color3 = Color3.new(0, 0, 0)
+        outline.ZIndex = 4
 
-local function scanworkspace() local valid = {} for , model in pairs(workspace:GetChildren()) do if model.Name == "Bee" then local root = model:FindFirstChild("Root") local torso = model:FindFirstChild("torso") if root and torso then local addr = tostring(root.Address) valid[addr] = true if not trackedESP[addr] then local text = Drawing.new("Text") text.Text = "Bee" text.Center = true text.Outline = true text.Color = config.color text.Visible = false
+        local fill = Instance.new("BoxHandleAdornment", ESP_FOLDER)
+        fill.Adornee = part
+        fill.AlwaysOnTop = true
+        fill.Size = part.Size
+        fill.Transparency = beeTD.FillTrans
+        fill.Color3 = beeTD.Color
+        fill.ZIndex = 5
 
-                local box = Drawing.new("Square")
-                box.Thickness = 1
-                box.Filled = false
-                box.Color = config.color
-                box.Visible = false
+        objectESPCache[part] = fill
+        objectESPCache[outline] = outline
 
-                trackedESP[addr] = {
-                    root = root,
-                    text = text,
-                    box = box
-                }
+        part.AncestryChanged:Connect(function()
+            if not part:IsDescendantOf(workspace) then
+                if outline and outline.Parent then outline:Destroy() end
+                if fill and fill.Parent then fill:Destroy() end
+                objectESPCache[part] = nil
+                objectESPCache[outline] = nil
+            end
+        end)
+    else
+        applyObjectESP(part, beeTD)
+    end
+end
+
+local function scanBee()
+    if not State.BeeEnabled then return end
+    for _, model in ipairs(workspace:GetChildren()) do
+        if model.Name == "Bee" then
+            local root = model:FindFirstChild("Root")
+            local torso = model:FindFirstChild("torso")
+            if root and torso then
+                local part = torso
+                if not objectESPCache[part] then
+                    applyBeeESP(part)
+                end
             end
         end
     end
 end
 
-for addr, info in pairs(trackedESP) do
-    if not valid[addr] then
-        if info.text then info.text:Remove() end
-        if info.box then info.box:Remove() end
-        trackedESP[addr] = nil
-    end
-end
-
-end
-
-local function updateesp() for , info in pairs(trackedESP) do local root = info.root local text = info.text local box = info.box
-
-    if root and root.Position then
-        local head_pos, on_screen1 = WorldToScreen(root.Position + Vector3.new(0, 2, 0))
-        local leg_pos, on_screen2 = WorldToScreen(root.Position - Vector3.new(0, 2, 0))
-
-        if on_screen1 and on_screen2 then
-            local h = math.abs(head_pos.Y - leg_pos.Y)
-            local w = h / 1.5
-            local x = head_pos.X - w / 2
-            local y = head_pos.Y
-
-            box.Position = Vector2.new(x, y)
-            box.Size = Vector2.new(w, h)
-            box.Visible = config.box
-
-            text.Position = Vector2.new(head_pos.X, y - 16)
-            text.Visible = config.name
-        else
-            box.Visible = false
-            text.Visible = false
+local function watchBee()
+    workspace.ChildAdded:Connect(function(model)
+        task.wait(0.1)
+        if model.Name == "Bee" then
+            local root = model:FindFirstChild("Root")
+            local torso = model:FindFirstChild("torso")
+            if root and torso then
+                local part = torso
+                if part and State.BeeEnabled then
+                    applyBeeESP(part)
+                end
+            end
         end
-    else
-        box.Visible = false
-        text.Visible = false
+    end)
+end
+
+local function refreshObjects()
+    for part, esp in pairs(objectESPCache) do
+        if esp and esp.Parent then esp:Destroy() end
     end
+    objectESPCache = {}
+    initialScan()
+    scanBee()
 end
-
-end
-
-scan_workspace()
-
-while true do scan_workspace() update_esp() end
