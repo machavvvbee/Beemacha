@@ -22,8 +22,8 @@ if not workspace then return end
 local function scan_workspace()
     local valid = {}
     for _, model in pairs(workspace:GetChildren()) do
-        local prompt = model:FindFirstChild("star_mesh.001")
-        if prompt then
+        local starMesh = model:FindFirstChild("star_mesh.001")
+        if starMesh then
             local part = model:FindFirstChild("Part")
             if part then
                 local addr = tostring(part.Address)
