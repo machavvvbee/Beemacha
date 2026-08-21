@@ -15,7 +15,6 @@ local config = {
 
 local trackedESP = _G.trackedESP or {}
 _G.trackedESP = trackedESP
-local last_update = 0
 local workspace = workspace or game and game.Workspace or nil
 if not workspace then return end
 
